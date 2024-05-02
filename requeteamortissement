@@ -1,0 +1,35 @@
+select * from prtcli where cliprt = '000073' and nooper = '1001555';
+
+select * from prtcamo where  nooper = '1001555';
+
+----requette consul dossier
+select nooper Numero_Dossier,cptvue Compte_client,datoper Date_Creation,mntprt Capital,totint Marge,'type mourabaha',cserv Nbr_Echeance from prtcli where cliprt = '000073' and nooper = '1001555';
+
+
+
+----requette  tableau amort
+select datrmb,mntrmb Echeance,mntint Marge,mnttaxe TOF,sldamo Amortissement from prtcamo where  nooper = '1001555' and typamo = 'R';
+
+----requette entete tableau amort
+select 
+    pr.nooper Numero_Dossier,
+    'type mourabaha' AS type_mourabaha,
+    pr.datdep date_mep,
+    pr.datrmb date_1ech,
+    MAX(ech.datrmb) AS date_dern_ech,
+    MAX(pr.mntprt) AS prix_achat,
+    SUM(pr.mntprt + ech.mntint) AS prix_vente,
+    pr.cserv duree_mourabaha
+    ,pr.txtaxe TOF
+FROM 
+    prtcli pr
+JOIN
+    prtcamo ech ON pr.nooper = ech.nooper 
+where 
+pr.cliprt = '000073' AND pr.nooper = '1001555'
+GROUP BY 
+    pr.nooper,
+    pr.datdep,
+    pr.datrmb,
+    pr.cserv,
+    pr.txtaxe;
