@@ -19,6 +19,8 @@ from .models import *
 from .serializer import *
 from django.db import connection
 from django.db.models import Max
+from rest_framework import generics
+from django.utils import timezone
 
 # Create your views here.
 class InvalidInformationException(APIException):
@@ -84,34 +86,103 @@ class PrtcliView(APIView):
         return Response(serializer.data)
         
 
+#class PrtcliPostView(APIView):
+    #def post(self, request):
+        # Récupérer les données du corps de la requête
+        #cliprt = request.data.get('cliprt')
+
+        # Récupérer les données de la base de données en fonction des valeurs fournies
+        #prtcli_data = Prtcli.objects.filter(CLIPRT=cliprt).values(
+
+        #)
+        # Calculer Nbr_Echeance
+        #nbr_echeance = Prtcamo.objects.filter(TYPAMO='R').count()
+
+        # Sérialiser les données récupérées
+        #serializer = PrtcliSerializer(prtcli_data, many=True)
+
+        #response_data = []
+        #for data in prtcli_data:
+            #response_data.append({
+            #    'Numero_Dossier': data['NOOPER'],
+            #    'Compte_client': data['CPTVUE'],
+            #    'Date_Creation': data['DATOPER'],
+            #    'Capital': data['MNTPRT'],
+            #    'Marge': data['TOTINT'],
+            #    'Type': 'type mourabaha',
+           #     'Nbr_Echeance': data['CSERV'],
+                #nbr_echeance
+         #   })
+        
+        #return Response(response_data)
+
+  ###
+from django.db.models import Count
+
 class PrtcliPostView(APIView):
     def post(self, request):
         # Récupérer les données du corps de la requête
         cliprt = request.data.get('cliprt')
 
         # Récupérer les données de la base de données en fonction des valeurs fournies
-        pret = Prtcli.objects.filter(CLIPRT=cliprt)
+        prtcli_data = Prtcli.objects.filter(CLIPRT=cliprt).values('NOOPER', 'CPTVUE', 'DATOPER', 'MNTPRT', 'TOTINT', 'CSERV')
 
-        # Sérialiser les données récupérées
-        serializer = PrtcliSerializer(pret, many=True)
+        # Calculer le nombre d'échéances (Nbr_Echeance) pour chaque NOOPER
+        nbr_echeances = Prtcamo.objects.filter(TYPAMO='R', NOOPER__in=prtcli_data.values_list('NOOPER', flat=True)) \
+                                        .values('NOOPER') \
+                                        .annotate(counter=Count('NOOPER'))
 
-        # Renvoyer les données sérialisées en réponse JSON
-        return Response(serializer.data)
+        # Convertir en dictionnaire pour un accès plus facile
+        nbr_echeances_dict = {item['NOOPER']: item['counter'] for item in nbr_echeances}
 
+        response_data = []
+        for data in prtcli_data:
+            nooper = data['NOOPER']
+            response_data.append({
+                'Numero_Dossier': nooper,
+                'Compte_client': data['CPTVUE'],
+                'Date_Creation': data['DATOPER'],
+                'Capital': data['MNTPRT'],
+                'Marge': data['TOTINT'],
+                'Type': 'type mourabaha',
+                'Nbr_Echeance': nbr_echeances_dict.get(nooper, 0),  # Utiliser le compteur calculé
+            })
+
+        # Renvoyer les données en réponse JSON
+        return Response(response_data)
+
+  ###
 class PrtcliComptPostView(APIView):
     def post(self, request):
         # Récupérer les données du corps de la requête
         cliprt = request.data.get('cliprt')
         nooper = request.data.get('nooper')
 
-        # Récupérer les données de la base de données en fonction des valeurs fournies
-        pret = Prtcli.objects.filter(CLIPRT=cliprt, NOOPER=nooper)
+        # Récupérer les données de Prtcli
+        prtcli_data = Prtcli.objects.filter(CLIPRT=cliprt, NOOPER=nooper).values(
+ 
+        )
 
-        # Sérialiser les données récupérées
-        serializer = PrtcliSerializer(pret, many=True)
+        # Calculer Nbr_Echeance
+        nbr_echeance = Prtcamo.objects.filter(NOOPER=nooper, TYPAMO='R').count()
 
-        # Renvoyer les données sérialisées en réponse JSON
-        return Response(serializer.data)        
+        serializer = PrtcliSerializer(prtcli_data, many=True)
+        # Construire la réponse
+ 
+        response_data = []
+        for data in prtcli_data:
+            response_data.append({
+                'Numero_Dossier': data['NOOPER'],
+                'Compte_client': data['CPTVUE'],
+                'Date_Creation': data['DATOPER'],
+                'Capital': data['MNTPRT'],
+                'Marge': data['TOTINT'],
+                'Type': 'type mourabaha',
+                'Nbr_Echeance': nbr_echeance
+                #data['CSERV'],
+            })
+        # Renvoyer les données en réponse JSON
+        return Response(response_data)
 
 class PrtcamoliView(APIView):
     def get(self, request):
@@ -138,6 +209,8 @@ class PrtcamoNOOPERliView(APIView):
         # Renvoyer les données sérialisées en réponse JSON
         return Response(serializer.data)         
 
+
+
 class entetPostView(APIView):
     def post(self, request):
         # Récupérer les données du corps de la requête
@@ -153,20 +226,24 @@ class entetPostView(APIView):
                 pr.datrmb AS date_1ech,
                 MAX(ech.datrmb) AS date_dern_ech,
                 MAX(pr.mntprt) AS prix_achat,
-                SUM(pr.mntprt + ech.mntint) AS prix_vente,
-                pr.cserv AS duree_mourabaha,
+                MAX(pr.mntprt) + SUM(ech.mntint) AS prix_vente,
+                MAX(pr.mntprt) + SUM(ech.mntint) + SUM(mnttaxe) AS prix_venteTTC,
+                pr.mnttaxdos AS frais_dossier,
+                pr.mntasf AS frais_detude,
+                COUNT(*) AS duree_mourabaha,
                 pr.txtaxe AS TOF
             FROM 
                 prtcli pr
             JOIN
-                prtcamo ech ON pr.nooper = ech.nooper 
+                prtcamo ech ON pr.nooper = ech.nooper AND ech.typamo = 'R'
             WHERE 
                 pr.cliprt = %s AND pr.nooper = %s
             GROUP BY 
                 pr.nooper,
                 pr.datdep,
                 pr.datrmb,
-                pr.cserv,
+                pr.mnttaxdos,
+                pr.mntasf,
                 pr.txtaxe
         """
 
@@ -185,12 +262,16 @@ class entetPostView(APIView):
                 'date_dern_ech': p[4],
                 'prix_achat': p[5],
                 'prix_vente': p[6],
-                'duree_mourabaha': p[7],
-                'TOF': p[8]
+                'prix_vente_TTC': p[7],
+                'frais_dossier': p[8],
+                'frais_detude': p[9],
+                'duree_mourabaha': p[10],
+                'TOF': p[11]
             })
 
         # Renvoyer les données sérialisées en réponse JSON
         return Response(results)
+
 
 class entetPostView2(APIView):
     def post(self, request):
@@ -247,3 +328,36 @@ class entetPostView2(APIView):
 
         # Renvoyer les données sérialisées en réponse JSON
         return Response(data)        
+
+
+class MvtdListView(generics.ListAPIView):
+    queryset = Mvtd.objects.all()
+    serializer_class = MvtdSerializer
+
+
+class MvtdSpecificDateListView(APIView):
+    def post(self, request):
+        date = request.data.get('date', None)
+        if date is None:
+            return Response({"error": "Date is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        mvtd_queryset = Mvtd.objects.filter(datoper__lt=date)
+        serializer = MvtdSerializer(mvtd_queryset, many=True)
+        return Response(serializer.data)
+
+class MvtdSpecificNooperListView(APIView):
+    def post(self, request):
+        nooper = request.data.get('nooper', None)
+        if nooper is None:
+            return Response({"error": "Nooper is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        mvtd_queryset = Mvtd.objects.filter(nooper=nooper)
+        serializer = MvtdSerializer(mvtd_queryset, many=True)
+        return Response(serializer.data)
+
+class MvtdCurrentDateListView1(generics.ListAPIView):
+    serializer_class = MvtdSerializer
+
+    def get_queryset(self):
+        current_date = timezone.now().date()
+        return Mvtd.objects.filter(datoper__lt=current_date)        

@@ -16,5 +16,11 @@ urlpatterns = [
         path('get-entet-cli/', entetPostView.as_view(), name='get_entet_cli'),
 
         
+        path('mvtd/', MvtdListView.as_view(), name='mvtd-list'),
+        path('mvtd/specific-date/', MvtdSpecificDateListView.as_view(), name='mvtd-date'),
+        path('mvtd/specific-nooper/', MvtdSpecificNooperListView.as_view(), name='mvtd-nooper'),
 
+        
+
+        
 ]

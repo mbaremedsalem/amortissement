@@ -14,7 +14,7 @@ def image_uoload_profile(instance,filname):
 class NewUser(AbstractBaseUser,PermissionsMixin):
     nom = models.CharField(max_length=50,blank=True)
     prenom = models.CharField(max_length=50,blank=True)
-    phone = models.CharField(max_length=16,unique=True)
+    phone = models.CharField(max_length=16)
     username = models.CharField(max_length=16,unique=True,null=True)
     email = models.EmailField(max_length=50,blank=True)
     address = models.CharField(max_length=200,)
@@ -364,3 +364,19 @@ class Prtcamo(models.Model):
     class Meta:
         db_table = 'prtcamo'
 
+
+class Mvtd(models.Model):
+    compte = models.CharField(max_length=20)  # Assuming a maximum length of 20 for the account number
+    datoper = models.DateField()  # Operation date
+    datval = models.DateField()  # Validation date
+    mntdev = models.DecimalField(max_digits=15, decimal_places=2)  # Amount in the foreign currency
+    libelle = models.CharField(max_length=255)  # Description or label
+    codopsc = models.CharField(max_length=10)  # Operation code
+    expl = models.CharField(max_length=10)  # Explanation code
+    nooper = models.CharField(max_length=20,primary_key=True)  # Operation number
+
+    def __str__(self):
+        return f"{self.compte} - {self.nooper}"
+
+    class Meta:
+        db_table = 'mvtd'  # Explicitly specifying the table name

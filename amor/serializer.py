@@ -1,7 +1,7 @@
 from .models import *
 from rest_framework import serializers 
 from django.contrib.auth import authenticate
-
+from rest_framework import generics
 
 class SignUpSerializer(serializers.ModelSerializer):
      class Meta:
@@ -65,3 +65,13 @@ class PrtcamoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prtcamo
         fields = '__all__'
+
+
+
+
+class MvtdSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Mvtd
+        fields = ['compte', 'datoper', 'datval', 'mntdev', 'libelle', 'codopsc', 'expl', 'nooper']
+
+

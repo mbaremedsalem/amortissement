@@ -10,7 +10,7 @@ class SwitchDatabaseMiddleware:
         path = request.path
 
         # Déterminer quelle base de données utiliser en fonction de l'endpoint demandé
-        if path in ['/api/login/', '/api/register/','/api/password/']:
+        if path in ['/api/login/', '/api/register/','/api/password/'] or path.startswith('/admin/'):
             # Utiliser la base de données SQLite par défaut pour les endpoints login/ et register/
             using_db = 'sqlite'
         else:
