@@ -221,7 +221,7 @@ class entetPostView(APIView):
         query = """
             SELECT 
                 pr.nooper AS Numero_Dossier,
-                'type mourabaha' AS type_mourabaha,
+                'Mourabaha ' AS type_mourabaha,
                 pr.datdep AS date_mep,
                 pr.datrmb AS date_1ech,
                 MAX(ech.datrmb) AS date_dern_ech,
@@ -283,7 +283,7 @@ class entetPostView2(APIView):
         query = """
         SELECT 
             pr.nooper AS Numero_Dossier,
-            'type mourabaha' AS type_mourabaha,
+            'Mourabaha' AS type_mourabaha,
             pr.datdep AS date_mep,
             pr.datrmb AS date_1ech,
             MAX(ech.datrmb) AS date_dern_ech,
